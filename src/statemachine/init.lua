@@ -1,15 +1,14 @@
 --- A finite state machine implementation in Lua.
 --
--- State machines are created from a config table that defines states,
--- transitions, and callback functions. A shared context table is passed
--- to all callbacks.
+-- State machines are defined as a class from a config table, and then
+-- instantiated with a context table. The class validates and copies the
+-- config once, and instances are cheap to create.
 --
 -- @copyright Copyright (c) 2026-2026 Thijs Schreijer
 -- @author Thijs Schreijer
 -- @license MIT, see `LICENSE.md`.
 
 local StateMachine = {}
-StateMachine.__index = StateMachine
 
 StateMachine._VERSION = "0.0.1"
 StateMachine._COPYRIGHT = "Copyright (c) 2026-2026 Thijs Schreijer"
@@ -89,49 +88,10 @@ local function copy_config_states(states, err_string)
 end
 
 
---- Create a new state machine from a config table.
--- @tparam table config the configuration table
--- @tparam string config.initial_state the name of the initial state
--- @tparam[opt={}] table config.ctx the shared context table (not deep-copied)
--- @tparam table config.states table of state definitions, each with `enter`, `leave`, and `transitions`
--- @treturn StateMachine a new state machine instance
--- @usage
--- local sm = StateMachine({
---     initial_state = "locked",
---     ctx = {},
---     states = {
---         locked = {
---             enter = function(self, ctx, from) end,
---             leave = function(self, ctx, to) end,
---             transitions = {
---                 unlocked = function(self, ctx, to) end,
---             },
---         },
---         unlocked = {
---             enter = function(self, ctx, from) end,
---             leave = function(self, ctx, to) end,
---             transitions = {
---                 locked = function(self, ctx, to) end,
---             },
---         },
---     },
--- })
-local function new(config)
-  local err_states = validate_config(config)
 
-  local self = setmetatable({
-    _current_state = nil,
-    _ctx = config.ctx or {},
-    _states = copy_config_states(config.states, err_states),
-  }, StateMachine)
-
-  assert(type(self._ctx) == "table", "config.ctx must be a table")
-
-  -- call enter on the initial state with from=nil (starting up)
-  self:transition_to(config.initial_state)
-
-  return self
-end
+-- Instance metatable
+local SMInstance = {}
+SMInstance.__index = SMInstance
 
 
 
@@ -140,7 +100,7 @@ end
 -- and finally the enter callback on the target state.
 -- @tparam string new_state the target state name
 -- @raise error if the state does not exist or the transition is not allowed
-function StateMachine:transition_to(new_state)
+function SMInstance:transition_to(new_state)
   local current_state = self._current_state
   local target_state = self._states[new_state] -- will throw an informative error if not found
   local ctx = self:get_context()
@@ -173,7 +133,7 @@ end
 
 --- Get the current state name.
 -- @treturn string the current state name
-function StateMachine:get_current_state()
+function SMInstance:get_current_state()
   return self._current_state
 end
 
@@ -182,7 +142,7 @@ end
 --- Check if a transition to the given state is valid from the current state.
 -- @tparam string state the target state name
 -- @treturn boolean true if the transition is valid
-function StateMachine:can_transition_to(state)
+function SMInstance:can_transition_to(state)
   local current_state = self._states[self._current_state]
   return current_state.transitions[state] ~= nil
 end
@@ -191,8 +151,71 @@ end
 
 --- Get the shared context table.
 -- @treturn table the context table
-function StateMachine:get_context()
+function SMInstance:get_context()
   return self._ctx
+end
+
+
+
+-- Class metatable
+local SMClass = {}
+SMClass.__index = SMClass
+
+--- Create a new instance from this class.
+-- @tparam[opt={}] table ctx the shared context table
+-- @treturn SMInstance a new state machine instance
+function SMClass:__call(ctx)
+  ctx = ctx or {}
+  assert(type(ctx) == "table", "ctx must be a table")
+
+  local instance = setmetatable({
+    _current_state = nil,
+    _ctx = ctx,
+    _states = self._states,
+  }, SMInstance)
+
+  instance:transition_to(self._initial_state)
+
+  return instance
+end
+
+
+
+--- Create a new state machine class from a config table.
+-- @tparam table config the configuration table
+-- @tparam string config.initial_state the name of the initial state
+-- @tparam table config.states table of state definitions, each with `enter`, `leave`, and `transitions`
+-- @treturn SMClass a new state machine class, callable to create instances
+-- @usage
+-- local DoorLock = StateMachine({
+--     initial_state = "locked",
+--     states = {
+--         locked = {
+--             enter = function(self, ctx, from) end,
+--             leave = function(self, ctx, to) end,
+--             transitions = {
+--                 unlocked = function(self, ctx, to) end,
+--             },
+--         },
+--         unlocked = {
+--             enter = function(self, ctx, from) end,
+--             leave = function(self, ctx, to) end,
+--             transitions = {
+--                 locked = function(self, ctx, to) end,
+--             },
+--         },
+--     },
+-- })
+-- local door = DoorLock({ count = 0 })
+local function new(config)
+  local err_states = validate_config(config)
+
+  local class = setmetatable({
+    _initial_state = config.initial_state,
+    _states = copy_config_states(config.states, err_states),
+  }, SMClass)
+
+  return class
 end
 
 

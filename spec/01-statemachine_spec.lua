@@ -16,9 +16,9 @@ describe("statemachine", function()
   end)
 
 
-  describe("creation", function()
-    it("creates a state machine with minimal config", function()
-      local sm = StateMachine({
+  describe("class creation", function()
+    it("creates a class with minimal config", function()
+      local MyClass = StateMachine({
         initial_state = "idle",
         states = {
           idle = {
@@ -29,29 +29,11 @@ describe("statemachine", function()
         },
       })
 
-      assert.is.table(sm)
-      assert.equals("idle", sm:get_current_state())
+      assert.is.table(MyClass)
     end)
 
-    it("creates a state machine with context", function()
-      local ctx = { count = 0 }
-      local sm = StateMachine({
-        initial_state = "idle",
-        ctx = ctx,
-        states = {
-          idle = {
-            enter = function() end,
-            leave = function() end,
-            transitions = {},
-          },
-        },
-      })
-
-      assert.equals(ctx, sm:get_context())
-    end)
-
-    it("creates a state machine with multiple states", function()
-      local sm = StateMachine({
+    it("creates a class with multiple states", function()
+      local MyClass = StateMachine({
         initial_state = "locked",
         states = {
           locked = {
@@ -71,29 +53,7 @@ describe("statemachine", function()
         },
       })
 
-      assert.equals("locked", sm:get_current_state())
-    end)
-
-    it("calls enter callback on initial state", function()
-      local entered = false
-      local from_state = "NOT_SET"
-
-      local sm = StateMachine({
-        initial_state = "idle",
-        states = {
-          idle = {
-            enter = function(self, ctx, from)
-              entered = true
-              from_state = from
-            end,
-            leave = function() end,
-            transitions = {},
-          },
-        },
-      })
-
-      assert.is_true(entered)
-      assert.is_nil(from_state)  -- from should be nil on initial state
+      assert.is.table(MyClass)
     end)
 
     it("rejects config that is not a table", function()
@@ -243,28 +203,115 @@ describe("statemachine", function()
         })
       end)
     end)
+  end)
+
+
+  describe("instance creation", function()
+    local MyClass
+
+    before_each(function()
+      MyClass = StateMachine({
+        initial_state = "idle",
+        states = {
+          idle = {
+            enter = function() end,
+            leave = function() end,
+            transitions = {},
+          },
+        },
+      })
+    end)
+
+    it("creates an instance with default context", function()
+      local sm = MyClass()
+
+      assert.is.table(sm)
+      assert.equals("idle", sm:get_current_state())
+      assert.same({}, sm:get_context())
+    end)
+
+    it("creates an instance with provided context", function()
+      local ctx = { count = 0 }
+      local sm = MyClass(ctx)
+
+      assert.equals(ctx, sm:get_context())
+    end)
+
+    it("calls enter callback on initial state", function()
+      local entered = false
+      local from_state = "NOT_SET"
+
+      local EnterClass = StateMachine({
+        initial_state = "idle",
+        states = {
+          idle = {
+            enter = function(self, ctx, from)
+              entered = true
+              from_state = from
+            end,
+            leave = function() end,
+            transitions = {},
+          },
+        },
+      })
+
+      local sm = EnterClass()
+
+      assert.is_true(entered)
+      assert.is_nil(from_state)  -- from should be nil on initial state
+    end)
 
     it("rejects non-table context", function()
       assert.has_error(function()
-        StateMachine({
-          initial_state = "idle",
-          ctx = "not a table",
-          states = {
-            idle = {
-              enter = function() end,
-              leave = function() end,
-              transitions = {},
+        MyClass("not a table")
+      end, "ctx must be a table")
+    end)
+
+    it("creates independent instances from the same class", function()
+      local DoorClass = StateMachine({
+        initial_state = "locked",
+        states = {
+          locked = {
+            enter = function(self, ctx) ctx.enters = (ctx.enters or 0) + 1 end,
+            leave = function() end,
+            transitions = {
+              unlocked = function() end,
             },
           },
-        })
-      end, "config.ctx must be a table")
+          unlocked = {
+            enter = function(self, ctx) ctx.enters = (ctx.enters or 0) + 1 end,
+            leave = function() end,
+            transitions = {
+              locked = function() end,
+            },
+          },
+        },
+      })
+
+      local ctx1 = { enters = 0 }
+      local ctx2 = { enters = 0 }
+      local door1 = DoorClass(ctx1)
+      local door2 = DoorClass(ctx2)
+
+      -- both start in locked
+      assert.equals("locked", door1:get_current_state())
+      assert.equals("locked", door2:get_current_state())
+
+      -- transition door1 only
+      door1:transition_to("unlocked")
+      assert.equals("unlocked", door1:get_current_state())
+      assert.equals("locked", door2:get_current_state())
+
+      -- contexts are independent
+      assert.equals(2, ctx1.enters)  -- initial enter + transition enter
+      assert.equals(1, ctx2.enters)  -- initial enter only
     end)
   end)
 
 
   describe("transitions", function()
     it("transitions to a valid state", function()
-      local sm = StateMachine({
+      local DoorClass = StateMachine({
         initial_state = "locked",
         states = {
           locked = {
@@ -283,6 +330,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = DoorClass()
 
       sm:transition_to("unlocked")
       assert.equals("unlocked", sm:get_current_state())
@@ -292,7 +340,7 @@ describe("statemachine", function()
     end)
 
     it("rejects transition to invalid state", function()
-      local sm = StateMachine({
+      local DoorClass = StateMachine({
         initial_state = "locked",
         states = {
           locked = {
@@ -311,6 +359,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = DoorClass()
 
       sm:transition_to("unlocked")
 
@@ -320,7 +369,7 @@ describe("statemachine", function()
     end)
 
     it("rejects transition not in current state's transitions", function()
-      local sm = StateMachine({
+      local DoorClass = StateMachine({
         initial_state = "locked",
         states = {
           locked = {
@@ -337,6 +386,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = DoorClass()
 
       sm:transition_to("unlocked")
 
@@ -348,7 +398,7 @@ describe("statemachine", function()
     it("calls callbacks in correct order", function()
       local order = {}
 
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "state_a",
         states = {
           state_a = {
@@ -365,6 +415,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass()
 
       -- initial state should have called enter
       assert.same({ "a_enter" }, order)
@@ -382,9 +433,8 @@ describe("statemachine", function()
       local leave_args = {}
       local transition_args = {}
 
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "state_a",
-        ctx = ctx,
         states = {
           state_a = {
             enter = function(self, c, from)
@@ -408,6 +458,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass(ctx)
 
       -- reset after initial enter
       enter_args = {}
@@ -430,9 +481,8 @@ describe("statemachine", function()
     it("allows context modification during transitions", function()
       local ctx = { count = 0 }
 
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "idle",
-        ctx = ctx,
         states = {
           idle = {
             enter = function(self, c) c.count = c.count + 1 end,
@@ -448,6 +498,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass(ctx)
 
       -- initial enter: 0 + 1 = 1
       assert.equals(1, ctx.count)
@@ -463,7 +514,7 @@ describe("statemachine", function()
 
   describe("can_transition_to", function()
     it("returns true for valid transitions", function()
-      local sm = StateMachine({
+      local DoorClass = StateMachine({
         initial_state = "locked",
         states = {
           locked = {
@@ -482,6 +533,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = DoorClass()
 
       assert.is_true(sm:can_transition_to("unlocked"))
       assert.is_false(sm:can_transition_to("locked"))
@@ -493,7 +545,7 @@ describe("statemachine", function()
     end)
 
     it("returns false for invalid transitions", function()
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "idle",
         states = {
           idle = {
@@ -503,6 +555,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass()
 
       assert.is_false(sm:can_transition_to("nonexistent"))
       assert.is_false(sm:can_transition_to("idle"))
@@ -512,7 +565,7 @@ describe("statemachine", function()
 
   describe("state isolation", function()
     it("prevents adding states after creation", function()
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "idle",
         states = {
           idle = {
@@ -522,6 +575,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass()
 
       assert.has_error(function()
         sm._states.new_state = {}
@@ -529,7 +583,7 @@ describe("statemachine", function()
     end)
 
     it("provides helpful error for accessing non-existent state", function()
-      local sm = StateMachine({
+      local MyClass = StateMachine({
         initial_state = "idle",
         states = {
           idle = {
@@ -539,6 +593,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = MyClass()
 
       assert.error_matches(function()
         local _ = sm._states.nonexistent
@@ -551,9 +606,8 @@ describe("statemachine", function()
     it("handles multi-state workflow", function()
       local ctx = { log = {} }
 
-      local sm = StateMachine({
+      local WorkflowClass = StateMachine({
         initial_state = "init",
-        ctx = ctx,
         states = {
           init = {
             enter = function(self, c) table.insert(c.log, "init") end,
@@ -594,6 +648,7 @@ describe("statemachine", function()
           },
         },
       })
+      local sm = WorkflowClass(ctx)
 
       assert.equals("init", sm:get_current_state())
 

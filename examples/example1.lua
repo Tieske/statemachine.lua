@@ -14,16 +14,9 @@ package.path = "./src/?.lua;./src/?/init.lua;" .. package.path
 
 local StateMachine = require "statemachine"
 
--- Create a state machine for a smart door lock
-local door = StateMachine({
+-- Step 1: Create a class (validates config, copies states — done once)
+local DoorLock = StateMachine({
   initial_state = "locked",
-
-  -- Context holds shared state across all callbacks
-  ctx = {
-    failed_attempts = 0,
-    max_attempts = 3,
-    log = {},
-  },
 
   states = {
     locked = {
@@ -97,6 +90,13 @@ local door = StateMachine({
   },
 })
 
+-- Step 2: Create instances (cheap — just stores ctx and enters initial state)
+local door = DoorLock({
+  failed_attempts = 0,
+  max_attempts = 3,
+  log = {},
+})
+
 -- Demonstrate the state machine
 print("\n=== Smart Door Lock Demo ===\n")
 
@@ -143,5 +143,14 @@ end)
 if not success then
   print(string.format("❌ Error: %s", err:match("([^\n]+)")))
 end
+
+-- Demonstrate multiple instances from the same class
+print("\n7. Creating a second door from the same class:")
+local door2 = DoorLock({ failed_attempts = 0, max_attempts = 3, log = {} })
+print(string.format("   Door 1 state: %s", door:get_current_state()))
+print(string.format("   Door 2 state: %s", door2:get_current_state()))
+door2:transition_to("unlocked")
+print(string.format("   Door 1 state: %s (unchanged)", door:get_current_state()))
+print(string.format("   Door 2 state: %s (transitioned independently)", door2:get_current_state()))
 
 print("\n=== Demo Complete ===")
