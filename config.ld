@@ -1,6 +1,6 @@
-project='[repo-name]'
-title='[module-name] docs'
-description='[short-description]'
+project='statemachine.lua'
+title='statemachine docs'
+description='a finite state machine implementation in Lua'
 
 format='markdown'
 use_markdown_titles = true
