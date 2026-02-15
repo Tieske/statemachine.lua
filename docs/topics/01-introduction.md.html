@@ -33,14 +33,15 @@
 
 <h2>Contents</h2>
 <ul>
-<li><a href="#1_1_Paragraph">1.1 Paragraph </a></li>
+<li><a href="#1_1_Overview">1.1 Overview </a></li>
+<li><a href="#1_2_Two_level_architecture">1.2 Two-level architecture </a></li>
+<li><a href="#1_3_Callbacks_and_order">1.3 Callbacks and order </a></li>
 </ul>
 
 
 <h2>Topics</h2>
 <ul class="">
   <li><strong>1. Introduction</strong></li>
-  <li><a href="../topics/02-advanced.md.html">2. Advanced topic</a></li>
   <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
   <li><a href="../topics/LICENSE.md.html">MIT License</a></li>
 </ul>
@@ -54,7 +55,7 @@
 </ul>
 <h2>Examples</h2>
 <ul class="nowrap">
-  <li><a href="../examples/example1.lua.html">example1.lua</a></li>
+  <li><a href="../examples/example.lua.html">example.lua</a></li>
 </ul>
 
 </div>
@@ -64,8 +65,65 @@
 
 <h1>1. Introduction</h1>
 
-<p><a name="1_1_Paragraph"></a></p>
-<h2>1.1 Paragraph</h2>
+<p><a name="1_1_Overview"></a></p>
+<h2>1.1 Overview</h2>
+
+<p>statemachine.lua is a finite state machine library for Lua. It provides a simple, callback-driven API for defining states, transitions, and shared context.</p>
+
+<p><a name="1_2_Two_level_architecture"></a></p>
+<h2>1.2 Two-level architecture</h2>
+
+<p>The library uses a class/instance pattern:</p>
+
+<ol>
+    <li><strong>Class creation</strong> — <code>StateMachine(config)</code> validates the configuration and copies the states table. This is the expensive step, done once.</li>
+    <li><strong>Instance creation</strong> — Calling the class with an optional context table creates an instance. This is cheap and can be done many times.</li>
+</ol>
+
+
+<pre>
+<span class="keyword">local</span> StateMachine = <span class="global">require</span> <span class="string">"statemachine"</span>
+
+<span class="comment">-- Create a class (done once)
+</span><span class="keyword">local</span> DoorLock = <span class="function-name">StateMachine</span>({
+    initial_state = <span class="string">"locked"</span>,
+    states = {
+        locked = {
+            enter = <span class="keyword">function</span>(self, ctx, from) <span class="keyword">end</span>,  <span class="comment">-- Note: from is <code>nil</code> when first started!
+</span>            leave = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            transitions = {
+                unlocked = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            },
+        },
+        unlocked = {
+            enter = <span class="keyword">function</span>(self, ctx, from) <span class="keyword">end</span>,
+            leave = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            transitions = {
+                locked = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            },
+        },
+    },
+})
+
+<span class="comment">-- Create instances (cheap, each with its own context)
+</span><span class="keyword">local</span> door1 = <span class="function-name">DoorLock</span>({ count = <span class="number">0</span> })
+<span class="keyword">local</span> door2 = <span class="function-name">DoorLock</span>({ count = <span class="number">0</span> })
+</pre>
+
+
+<p><a name="1_3_Callbacks_and_order"></a></p>
+<h2>1.3 Callbacks and order</h2>
+
+<p>Each state defines <code>enter</code> and <code>leave</code> callbacks, and each transition defines a callback. When transitioning from state A to state B, the callbacks fire in this order:</p>
+
+<ol>
+    <li><strong>Transition callback</strong></li>
+    <li><strong>Leave callback</strong></li>
+    <li>The current state is updated (<code>get_current_state()</code> now returns the state transitioned to)</li>
+    <li><strong>Enter callback</strong></li>
+</ol>
+
+<p><em>Note:</em> On initial state entry (during instance creation), only the <code>enter</code> callback fires with <code>source_state</code> as <code>nil</code>.</p>
 
 
 </div> <!-- id="content" -->

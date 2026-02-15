@@ -7,6 +7,33 @@
 -- @copyright Copyright (c) 2026-2026 Thijs Schreijer
 -- @author Thijs Schreijer
 -- @license MIT, see `LICENSE.md`.
+-- @usage
+-- local StateMachine = require "statemachine"
+--
+-- -- Step 1: Create a class (validates config, copies states — done once)
+-- local DoorLock = StateMachine({
+--     initial_state = "locked",
+--     states = {
+--         locked = {
+--             enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
+--             leave = function(self, ctx, to) end,
+--             transitions = {
+--                 unlocked = function(self, ctx, to) end,
+--             },
+--         },
+--         unlocked = {
+--             enter = function(self, ctx, from) end,
+--             leave = function(self, ctx, to) end,
+--             transitions = {
+--                 locked = function(self, ctx, to) end,
+--             },
+--         },
+--     },
+-- })
+--
+-- -- Step 2: Create instances (cheap — just stores ctx and enters initial state)
+-- local door1 = DoorLock({ count = 0 })
+-- local door2 = DoorLock({ count = 0 })
 
 local StateMachine = {}
 
@@ -164,6 +191,7 @@ SMClass.__index = SMClass
 --- Create a new instance from this class.
 -- @tparam[opt={}] table ctx the shared context table
 -- @treturn SMInstance a new state machine instance
+-- @name SMClass
 function SMClass:__call(ctx)
   ctx = ctx or {}
   assert(type(ctx) == "table", "ctx must be a table")
@@ -186,27 +214,6 @@ end
 -- @tparam string config.initial_state the name of the initial state
 -- @tparam table config.states table of state definitions, each with `enter`, `leave`, and `transitions`
 -- @treturn SMClass a new state machine class, callable to create instances
--- @usage
--- local DoorLock = StateMachine({
---     initial_state = "locked",
---     states = {
---         locked = {
---             enter = function(self, ctx, from) end,
---             leave = function(self, ctx, to) end,
---             transitions = {
---                 unlocked = function(self, ctx, to) end,
---             },
---         },
---         unlocked = {
---             enter = function(self, ctx, from) end,
---             leave = function(self, ctx, to) end,
---             transitions = {
---                 locked = function(self, ctx, to) end,
---             },
---         },
---     },
--- })
--- local door = DoorLock({ count = 0 })
 local function new(config)
   local err_states = validate_config(config)
 

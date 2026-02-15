@@ -48,13 +48,12 @@
 <h2>Topics</h2>
 <ul class="">
   <li><a href="../topics/01-introduction.md.html">1. Introduction</a></li>
-  <li><a href="../topics/02-advanced.md.html">2. Advanced topic</a></li>
   <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
   <li><a href="../topics/LICENSE.md.html">MIT License</a></li>
 </ul>
 <h2>Examples</h2>
 <ul class="nowrap">
-  <li><a href="../examples/example1.lua.html">example1.lua</a></li>
+  <li><a href="../examples/example.lua.html">example.lua</a></li>
 </ul>
 
 </div>
@@ -62,8 +61,40 @@
 <div id="content">
 
 <h1>Module <code>statemachine</code></h1>
-<p>This module does something.</p>
-<p> Explain some basics, or the design.</p>
+<p>A finite state machine implementation in Lua.</p>
+<p> State machines are defined as a class from a config table, and then
+ instantiated with a context table. The class validates and copies the
+ config once, and instances are cheap to create.</p>
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">local StateMachine = require &quot;statemachine&quot;
+
+-- Step 1: Create a class (validates config, copies states — done once)
+local DoorLock = StateMachine({
+    initial_state = &quot;locked&quot;,
+    states = {
+        locked = {
+            enter = function(self, ctx, from) end,
+            leave = function(self, ctx, to) end,
+            transitions = {
+                unlocked = function(self, ctx, to) end,
+            },
+        },
+        unlocked = {
+            enter = function(self, ctx, from) end,
+            leave = function(self, ctx, to) end,
+            transitions = {
+                locked = function(self, ctx, to) end,
+            },
+        },
+    },
+})
+
+-- Step 2: Create instances (cheap — just stores ctx and enters initial state)
+local door1 = DoorLock({ count = 0 })
+local door2 = DoorLock({ count = 0 })
+</pre>
+    </ul>
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: Copyright (c) 2026-2026 Thijs Schreijer</li>
@@ -75,8 +106,24 @@
 <h2><a href="#Functions">Functions</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#do_something">do_something (what[, force=false])</a></td>
-	<td class="summary">Does something.</td>
+	<td class="name" nowrap><a href="#SMClass">SMClass ([ctx={}])</a></td>
+	<td class="summary">Create a new instance from this class.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:can_transition_to">SMInstance:can_transition_to (state)</a></td>
+	<td class="summary">Check if a transition to the given state is valid from the current state.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:get_context">SMInstance:get_context ()</a></td>
+	<td class="summary">Get the shared context table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:get_current_state">SMInstance:get_current_state ()</a></td>
+	<td class="summary">Get the current state name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:transition_to">SMInstance:transition_to (new_state)</a></td>
+	<td class="summary">Transition to a specific state.</td>
 	</tr>
 </table>
 
@@ -88,46 +135,123 @@
 
     <dl class="function">
     <dt>
-    <a name = "do_something"></a>
-    <strong>do_something (what[, force=false])</strong>
+    <a name = "SMClass"></a>
+    <strong>SMClass ([ctx={}])</strong>
     </dt>
     <dd>
-    Does something.
- It will do what you tell it.
+    Create a new instance from this class.
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">what</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a> or <span class="type">function</span></span>
-         the thing that has to be done
-        </li>
-        <li><span class="parameter">force</span>
-            <span class="types"><span class="type">boolean</span></span>
-         set to a truthy value to force it.
-         (<em>default</em> false)
+        <li><span class="parameter">ctx</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.6">table</a></span>
+         the shared context table
+         (<em>default</em> {})
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
-        <li>
-           <span class="types"><span class="type">boolean</span></span>
-        success</li>
-        <li>
-           <span class="types"><span class="type">nil</span> or <a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
-        error message on failure</li>
+
+           <span class="types"><span class="type">SMInstance</span></span>
+        a new state machine instance
     </ol>
 
 
 
-    <h3>Usage:</h3>
+
+</dd>
+    <dt>
+    <a name = "SMInstance:can_transition_to"></a>
+    <strong>SMInstance:can_transition_to (state)</strong>
+    </dt>
+    <dd>
+    Check if a transition to the given state is valid from the current state.
+
+
+    <h3>Parameters:</h3>
     <ul>
-        <pre class="example"><span class="keyword">local</span> success, err = project.<span class="function-name">do_something</span>(<span class="string">"tell a lie"</span>, <span class="keyword">true</span>)
-<span class="keyword">if</span> <span class="keyword">not</span> success <span class="keyword">then</span>
-    <span class="global">print</span>(<span class="string">"failed at lying; "</span>, err)
-<span class="keyword">end</span></pre>
+        <li><span class="parameter">state</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
+         the target state name
+        </li>
     </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true if the transition is valid
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SMInstance:get_context"></a>
+    <strong>SMInstance:get_context ()</strong>
+    </dt>
+    <dd>
+    Get the shared context table.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.6">table</a></span>
+        the context table
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SMInstance:get_current_state"></a>
+    <strong>SMInstance:get_current_state ()</strong>
+    </dt>
+    <dd>
+    Get the current state name.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
+        the current state name
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SMInstance:transition_to"></a>
+    <strong>SMInstance:transition_to (new_state)</strong>
+    </dt>
+    <dd>
+    Transition to a specific state.
+ Calls the transition callback, then the leave callback on the current state,
+ and finally the enter callback on the target state.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">new_state</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
+         the target state name
+        </li>
+    </ul>
+
+
+    <h3>Raises:</h3>
+    error if the state does not exist or the transition is not allowed
+
+
 
 </dd>
 </dl>
