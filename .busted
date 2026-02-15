@@ -1,0 +1,8 @@
+return {
+  default = {
+    verbose = true,
+    coverage = true,
+    output = "gtest",
+    lazy = true,
+  },
+}
