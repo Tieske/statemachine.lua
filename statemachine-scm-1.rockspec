@@ -34,12 +34,6 @@ build = {
     ["statemachine.init"] = "src/statemachine/init.lua",
   },
 
-  install = {
-    bin = {
-      ["statemachine"] = "bin/statemachine.lua",
-    }
-  },
-
   copy_directories = {
     -- can be accessed by `luarocks statemachine doc` from the commandline
     "docs",
