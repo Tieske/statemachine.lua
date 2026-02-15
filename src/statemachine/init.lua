@@ -104,7 +104,7 @@ local function copy_config_states(states, err_string)
   setmetatable(copy, {
     __index = function(_, key)
       error(("unknown state '%s'. Valid states: %s"):format(
-        tostring(key), err_string), 2)
+        tostring(key), tostring(err_string)), 2)
     end,
     __newindex = function()
       error("the states table is read-only", 2)
