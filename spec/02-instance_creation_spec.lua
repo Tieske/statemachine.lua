@@ -1,4 +1,5 @@
 describe("statemachine instance creation", function()
+
   local StateMachine
 
   before_each(function()
@@ -6,7 +7,9 @@ describe("statemachine instance creation", function()
   end)
 
 
+
   describe("instance creation", function()
+
     local MyClass
 
     before_each(function()
@@ -22,6 +25,8 @@ describe("statemachine instance creation", function()
       })
     end)
 
+
+
     it("creates an instance with default context", function()
       local sm = MyClass()
 
@@ -30,12 +35,14 @@ describe("statemachine instance creation", function()
       assert.same({}, sm:get_context())
     end)
 
+
     it("creates an instance with provided context", function()
       local ctx = { count = 0 }
       local sm = MyClass(ctx)
 
       assert.equals(ctx, sm:get_context())
     end)
+
 
     it("calls enter callback on initial state", function()
       local entered = false
@@ -55,17 +62,19 @@ describe("statemachine instance creation", function()
         },
       })
 
-      local sm = EnterClass()
+      EnterClass()
 
       assert.is_true(entered)
       assert.is_nil(from_state)  -- from should be nil on initial state
     end)
+
 
     it("rejects non-table context", function()
       assert.has_error(function()
         MyClass("not a table")
       end, "ctx must be a table")
     end)
+
 
     it("creates independent instances from the same class", function()
       local DoorClass = StateMachine({
@@ -106,10 +115,13 @@ describe("statemachine instance creation", function()
       assert.equals(2, ctx1.enters)  -- initial enter + transition enter
       assert.equals(1, ctx2.enters)  -- initial enter only
     end)
+
   end)
 
 
+
   describe("state isolation", function()
+
     it("prevents adding states after creation", function()
       local MyClass = StateMachine({
         initial_state = "idle",
@@ -128,6 +140,7 @@ describe("statemachine instance creation", function()
       end, "the states table is read-only")
     end)
 
+
     it("provides helpful error for accessing non-existent state", function()
       local MyClass = StateMachine({
         initial_state = "idle",
@@ -145,6 +158,7 @@ describe("statemachine instance creation", function()
         local _ = sm._states.nonexistent
       end, "unknown state 'nonexistent'. Valid states: 'idle'")
     end)
+
   end)
 
 end)

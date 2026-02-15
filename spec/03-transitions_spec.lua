@@ -1,4 +1,5 @@
 describe("statemachine transitions", function()
+
   local StateMachine
 
   before_each(function()
@@ -6,7 +7,9 @@ describe("statemachine transitions", function()
   end)
 
 
+
   describe("transitions", function()
+
     it("transitions to a valid state", function()
       local DoorClass = StateMachine({
         initial_state = "locked",
@@ -35,6 +38,7 @@ describe("statemachine transitions", function()
       sm:transition_to("locked")
       assert.equals("locked", sm:get_current_state())
     end)
+
 
     it("rejects transition to invalid state", function()
       local DoorClass = StateMachine({
@@ -65,6 +69,7 @@ describe("statemachine transitions", function()
       end, "unknown state 'locked_again'. Valid states: 'locked', 'unlocked'")
     end)
 
+
     it("rejects transition not in current state's transitions", function()
       local DoorClass = StateMachine({
         initial_state = "locked",
@@ -91,6 +96,7 @@ describe("statemachine transitions", function()
         sm:transition_to("locked")
       end, "no transition from 'unlocked' to 'locked'")
     end)
+
 
     it("calls callbacks in correct order", function()
       local order = {}
@@ -124,9 +130,10 @@ describe("statemachine transitions", function()
       assert.same({ "a_to_b", "a_leave", "b_enter" }, order)
     end)
 
+
     it("passes self, context, and target/source to callbacks", function()
       local ctx = { value = 42 }
-      local enter_args = {}
+      local enter_args
       local leave_args = {}
       local transition_args = {}
 
@@ -175,6 +182,7 @@ describe("statemachine transitions", function()
       assert.equals("state_a", enter_args[3])
     end)
 
+
     it("allows context modification during transitions", function()
       local ctx = { count = 0 }
 
@@ -206,10 +214,13 @@ describe("statemachine transitions", function()
       -- enter: 111 + 1000 = 1111
       assert.equals(1111, ctx.count)
     end)
+
   end)
 
 
+
   describe("can_transition_to", function()
+
     it("returns true for valid transitions", function()
       local DoorClass = StateMachine({
         initial_state = "locked",
@@ -241,6 +252,7 @@ describe("statemachine transitions", function()
       assert.is_true(sm:can_transition_to("locked"))
     end)
 
+
     it("returns false for invalid transitions", function()
       local MyClass = StateMachine({
         initial_state = "idle",
@@ -257,10 +269,13 @@ describe("statemachine transitions", function()
       assert.is_false(sm:can_transition_to("nonexistent"))
       assert.is_false(sm:can_transition_to("idle"))
     end)
+
   end)
 
 
+
   describe("complex state machine", function()
+
     it("handles multi-state workflow", function()
       local ctx = { log = {} }
 
@@ -320,6 +335,7 @@ describe("statemachine transitions", function()
       assert.same({ "init", "ready", "running", "done", "ready", "error", "ready" }, ctx.log)
       assert.equals("ready", sm:get_current_state())
     end)
+
   end)
 
 end)
