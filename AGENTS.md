@@ -28,6 +28,10 @@ Testing is done using [Busted](https://lunarmodules.github.io/busted/) and [LuaC
 
 For test file conventions, isolation rules, code style, and vertical whitespace rules, see **[spec/AGENTS.md](spec/AGENTS.md)**.
 
+## Lua compatibility
+
+All code MUST be compatible with the Lua versions specified in the [rockspec](statemachine-scm-1.rockspec). This includes LuaJIT. Do not use features specific to a single Lua version without a compatibility shim. Common pitfalls:
+
 ## Code style
 
 Code style is defined by [.luacheckrc](.luacheckrc) and [.editorconfig](.editorconfig). Ensure `luacheck .` passes with zero warnings before committing.
