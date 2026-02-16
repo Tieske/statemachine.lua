@@ -4,9 +4,12 @@ This file covers conventions for the Busted test files in `./spec/`.
 
 ## Test framework
 
-Tests use [Busted](https://lunarmodules.github.io/busted/). Run them with `busted` from the repository root. Lint with `luacheck` (the `.luacheckrc` in the repo root already adds the `busted` globals for `spec/**/*.lua`).
+Tests use [Busted](https://lunarmodules.github.io/busted/). Run them with `busted` from the repository root. Lint with `luacheck`.
+Coverage information will be in the file `luacov.report.out`.
 
 When running tests using `busted` ALWAYS specify `--output=utfTerminal` which generates less output than the default `gtest` handler. To save on tokens.
+
+The Makefile can be used (`make test` or `make lint`) once to ensure the proper test tools get installed. Again; to reduce output and save tokens AI agents should NOT use the Makefile for regular testing, that is for humans.
 
 ## File layout
 
@@ -49,7 +52,7 @@ end)
 
 ## Code style
 
-Style follows [.editorconfig](../.editorconfig) (2-space indent, LF line endings) and [.luacheckrc](../.luacheckrc).
+Style follows [.editorconfig](../.editorconfig), LF line endings) and [.luacheckrc](../.luacheckrc).
 
 ### General
 
@@ -70,11 +73,11 @@ When unit testing functions or methods, each function should have its own `descr
 Example:
 
 ```lua
-describe("statemachine", function()
+describe("my_object", function()
 
-  describe("transition_to()", function()
+  describe("some_method()", function()
 
-    it("transitions to a valid state", function()
+    it("prints something cool", function()
       -- implementation here
     end)
 
@@ -82,9 +85,9 @@ describe("statemachine", function()
 
 
 
-  describe("can_transition_to()", function()
+  describe("another_method()", function()
 
-    it("returns true for valid transitions", function()
+    it("throws an error on something bad", function()
       -- implementation here
     end)
 

@@ -50,3 +50,57 @@ Each state defines `enter` and `leave` callbacks, and each transition defines a 
 4. **Enter callback**
 
 _Note:_ On initial state entry (during instance creation), only the `enter` callback fires with `source_state` as `nil`.
+
+## 1.4 Initializing context with a virtual init state
+
+Instead of passing a pre-populated context table, you can use a virtual `_init` state
+that sets up the context and immediately transitions to the first real state:
+
+```lua
+local StateMachine = require "statemachine"
+local noop = function() end
+
+local Counter = StateMachine({
+    initial_state = "_init",
+    states = {
+        _init = {
+            enter = function(self, ctx)  -- initialize and move on
+                ctx.count = 0
+                ctx.log = {}
+                return self:transition_to("do_work")
+            end,
+            leave = noop,
+            transitions = {
+                idle = noop,
+            },
+        },
+        do_work = {
+            enter = function(self, ctx, from)
+                table.insert(ctx.log, "entered do_work")
+                -- at some point:
+                return self:transition_to("_done")
+            end,
+            leave = noop,
+            transitions = {
+              _done = noop,
+            },
+        },
+        _done = {  -- no way out of this state...
+          enter = noop,  -- potentially do some teardown and cleanup here
+          leave = noop,
+          transitions = {}
+        }
+    },
+})
+
+-- Context is initialized by _init, no need to pass values
+local c = Counter()
+print(c:get_current_state())         -- "idle"
+print(c:get_context().count)         -- 0
+```
+
+This pattern keeps the context initialization co-located with the state machine
+definition, so callers can create instances with just `Counter()` and get a
+fully initialized context.
+
+Similarly, a `_done` state can be defined that has no transitions out of that state, to ensure it doesn't get used beyond its lifetime.

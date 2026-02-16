@@ -63,21 +63,30 @@ local function validate_config(config)
 
   -- validate initial_state exists
   if not config.states[config.initial_state] then
-    error("config.initial_state '%s' does not exist in states. Valid states: " .. tostring(state_names))
+    error("config.initial_state '%s' does not exist in states. " ..
+          "Valid states: " .. tostring(state_names))
   end
 
   -- validate each state
   for name, state in pairs(config.states) do
-    assert(type(state) == "table", ("state '%s' must be a table"):format(name))
-    assert(type(state.enter) == "function", ("state '%s' must have an 'enter' function"):format(name))
-    assert(type(state.leave) == "function", ("state '%s' must have a 'leave' function"):format(name))
-    assert(type(state.transitions) == "table", ("state '%s' must have a 'transitions' table"):format(name))
+    assert(type(state) == "table",
+           ("state '%s' must be a table"):format(name))
+    assert(type(state.enter) == "function",
+           ("state '%s' must have an 'enter' function"):format(name))
+    assert(type(state.leave) == "function",
+           ("state '%s' must have a 'leave' function"):format(name))
+    assert(type(state.transitions) == "table",
+           ("state '%s' must have a 'transitions' table"):format(name))
 
     -- validate transition targets exist and callbacks are functions
     for target, callback in pairs(state.transitions) do
-      assert(type(callback) == "function", ("transition from '%s' to '%s' must be a function"):format(name, target))
-      assert(config.states[target], ("transition from '%s' references unknown state '%s'. Valid states: %s"):format(
-          name, target, tostring(state_names)))
+      assert(type(callback) == "function",
+             ("transition from '%s' to '%s' must be a function"):format(
+               name, target))
+      assert(config.states[target],
+             ("transition from '%s' references unknown state " ..
+              "'%s'. Valid states: %s"):format(
+               name, target, tostring(state_names)))
     end
   end
 
@@ -212,7 +221,8 @@ end
 --- Create a new state machine class from a config table.
 -- @tparam table config the configuration table
 -- @tparam string config.initial_state the name of the initial state
--- @tparam table config.states table of state definitions, each with `enter`, `leave`, and `transitions`
+-- @tparam table config.states table of state definitions, each with
+-- `enter`, `leave`, and `transitions`
 -- @treturn SMClass a new state machine class, callable to create instances
 local function new(config)
   local err_states = validate_config(config)
