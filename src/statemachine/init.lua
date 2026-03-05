@@ -4,48 +4,49 @@
 -- instantiated with a context table. The class validates and copies the
 -- config once, and instances are cheap to create.
 --
+-- Example:
+--
+--     local StateMachine = require "statemachine"
+--
+--     -- Step 1: Create a class (validates config, copies states — done once)
+--     local DoorLock = StateMachine({
+--         initial_state = "locked",
+--         states = {
+--             locked = {
+--                 enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
+--                 leave = function(self, ctx, to) end,
+--                 step  = function(self, ctx) end,   -- return seconds, or nil for no stepping
+--                 transitions = {
+--                     -- The callback is also a guard: return true to allow, or nil+err to block.
+--                     unlocked = function(self, ctx, to)
+--                         if not ctx.has_key then
+--                             return nil, "key required to unlock"
+--                         end
+--                         return true
+--                     end,
+--                 },
+--             },
+--             unlocked = {
+--                 enter = function(self, ctx, from) end,
+--                 leave = function(self, ctx, to) end,
+--                 step  = function(self, ctx) end,
+--                 transitions = {
+--                     locked = function(self, ctx, to) return true end,
+--                 },
+--             },
+--         },
+--     })
+--
+--     -- Step 2: Create instances (cheap — just stores ctx and enters initial state)
+--     local door1 = DoorLock({ count = 0, has_key = true })
+--     local door2 = DoorLock({ count = 0 })
+--
+--     -- Step 3: Transition (returns nil+err if guard blocks, raises on missing path)
+--     local ok, err = door1:transition_to("unlocked")  -- ok = true
+--     local ok, err = door2:transition_to("unlocked")  -- ok = nil, err = "key required to unlock"
 -- @copyright Copyright (c) 2026-2026 Thijs Schreijer
 -- @author Thijs Schreijer
 -- @license MIT, see `LICENSE.md`.
--- @usage
--- local StateMachine = require "statemachine"
---
--- -- Step 1: Create a class (validates config, copies states — done once)
--- local DoorLock = StateMachine({
---     initial_state = "locked",
---     states = {
---         locked = {
---             enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
---             leave = function(self, ctx, to) end,
---             step  = function(self, ctx) end,         -- return seconds, or nil for no stepping
---             transitions = {
---                 -- The callback is also a guard: return true to allow, or nil+err to block.
---                 unlocked = function(self, ctx, to)
---                     if not ctx.has_key then
---                         return nil, "key required to unlock"
---                     end
---                     return true
---                 end,
---             },
---         },
---         unlocked = {
---             enter = function(self, ctx, from) end,
---             leave = function(self, ctx, to) end,
---             step  = function(self, ctx) end,
---             transitions = {
---                 locked = function(self, ctx, to) return true end,
---             },
---         },
---     },
--- })
---
--- -- Step 2: Create instances (cheap — just stores ctx and enters initial state)
--- local door1 = DoorLock({ count = 0, has_key = true })
--- local door2 = DoorLock({ count = 0 })
---
--- -- Step 3: Transition (returns nil+err if guard blocks, raises on missing path)
--- local ok, err = door1:transition_to("unlocked")  -- ok = true
--- local ok, err = door2:transition_to("unlocked")  -- ok = nil, err = "key required to unlock"
 
 local function noop() end
 
@@ -175,8 +176,11 @@ SMInstance.__index = SMInstance
 --     end,
 -- }
 -- @tparam string new_state the target state name
--- @treturn true on success
--- @treturn nil, string if the guard blocks the transition
+-- @treturn[1] any the return value of the new state's `enter` callback, or `true` if it returned
+-- nothing (typically this is the number of seconds after which to call the `step` callback, but it
+-- can be used for any purpose).
+-- @treturn[2] nil
+-- @treturn[2] string error/reason if the guard blocks the transition
 -- @raise error if the state does not exist or no transition path exists
 function SMInstance:transition_to(new_state)
   local current_state = self._current_state

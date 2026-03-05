@@ -92,10 +92,11 @@
         unlocked = <span class="keyword">function</span>(self, ctx, to)
           <span class="comment">-- Simulate checking a passcode
 </span>          <span class="keyword">if</span> ctx.failed_attempts &gt;= ctx.max_attempts <span class="keyword">then</span>
-            <span class="global">error</span>(<span class="string">"Too many failed attempts. Lock is disabled."</span>)
+            <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">"Too many failed attempts. Lock is disabled."</span>
           <span class="keyword">end</span>
 
           <span class="global">table</span>.<span class="function-name">insert</span>(ctx.log, <span class="string">"Transition: locked -&gt; unlocked"</span>)
+          <span class="keyword">return</span> <span class="keyword">true</span>
         <span class="keyword">end</span>,
       },
     },
@@ -116,10 +117,12 @@
       transitions = {
         locked = <span class="keyword">function</span>(self, ctx, to)
           <span class="global">table</span>.<span class="function-name">insert</span>(ctx.log, <span class="string">"Transition: unlocked -&gt; locked"</span>)
+          <span class="keyword">return</span> <span class="keyword">true</span>
         <span class="keyword">end</span>,
 
         open = <span class="keyword">function</span>(self, ctx, to)
           <span class="global">table</span>.<span class="function-name">insert</span>(ctx.log, <span class="string">"Transition: unlocked -&gt; open"</span>)
+          <span class="keyword">return</span> <span class="keyword">true</span>
         <span class="keyword">end</span>,
       },
     },
@@ -137,6 +140,7 @@
       transitions = {
         unlocked = <span class="keyword">function</span>(self, ctx, to)
           <span class="global">table</span>.<span class="function-name">insert</span>(ctx.log, <span class="string">"Transition: open -&gt; unlocked"</span>)
+          <span class="keyword">return</span> <span class="keyword">true</span>
         <span class="keyword">end</span>,
       },
     },
@@ -155,7 +159,7 @@
 
 <span class="comment">-- Try to open without unlocking
 </span><span class="global">print</span>(<span class="string">"\n1. Trying to open a locked door:"</span>)
-<span class="keyword">if</span> door:<span class="function-name">can_transition_to</span>(<span class="string">"open"</span>) <span class="keyword">then</span>
+<span class="keyword">if</span> door:<span class="function-name">has_transition_to</span>(<span class="string">"open"</span>) <span class="keyword">then</span>
   door:<span class="function-name">transition_to</span>(<span class="string">"open"</span>)
 <span class="keyword">else</span>
   <span class="global">print</span>(<span class="string">"❌ Cannot open: door is locked!"</span>)
@@ -163,7 +167,10 @@
 
 <span class="comment">-- Unlock the door
 </span><span class="global">print</span>(<span class="string">"\n2. Unlocking the door:"</span>)
-door:<span class="function-name">transition_to</span>(<span class="string">"unlocked"</span>)
+<span class="keyword">local</span> ok, err = door:<span class="function-name">transition_to</span>(<span class="string">"unlocked"</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="global">string</span>.<span class="function-name">format</span>(<span class="string">"❌ Blocked: %s"</span>, err))
+<span class="keyword">end</span>
 
 <span class="comment">-- Now open it
 </span><span class="global">print</span>(<span class="string">"\n3. Opening the unlocked door:"</span>)

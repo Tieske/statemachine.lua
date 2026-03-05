@@ -55,39 +55,58 @@
 
 <h1>Module <code>statemachine</code></h1>
 <p>A finite state machine implementation in Lua.</p>
+<p>
+
+
 <p> State machines are defined as a class from a config table, and then
  instantiated with a context table. The class validates and copies the
  config once, and instances are cheap to create.</p>
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example">local StateMachine = require &quot;statemachine&quot;
 
--- Step 1: Create a class (validates config, copies states — done once)
-local DoorLock = StateMachine({
-    initial_state = &quot;locked&quot;,
+<p> Example:</p>
+
+
+<pre>
+<span class="keyword">local</span> StateMachine = <span class="global">require</span> <span class="string">"statemachine"</span>
+
+<span class="comment">-- Step 1: Create a class (validates config, copies states — done once)
+</span><span class="keyword">local</span> DoorLock = <span class="function-name">StateMachine</span>({
+    initial_state = <span class="string">"locked"</span>,
     states = {
         locked = {
-            enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
-            leave = function(self, ctx, to) end,
-            transitions = {
-                unlocked = function(self, ctx, to) end,
+            enter = <span class="keyword">function</span>(self, ctx, from) <span class="keyword">end</span>,   <span class="comment">-- Note: from is nil when first started!
+</span>            leave = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            step  = <span class="keyword">function</span>(self, ctx) <span class="keyword">end</span>,   <span class="comment">-- return seconds, or nil for no stepping
+</span>            transitions = {
+                <span class="comment">-- The callback is also a guard: return true to allow, or nil+err to block.
+</span>                unlocked = <span class="keyword">function</span>(self, ctx, to)
+                    <span class="keyword">if</span> <span class="keyword">not</span> ctx.has_key <span class="keyword">then</span>
+                        <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">"key required to unlock"</span>
+                    <span class="keyword">end</span>
+                    <span class="keyword">return</span> <span class="keyword">true</span>
+                <span class="keyword">end</span>,
             },
         },
         unlocked = {
-            enter = function(self, ctx, from) end,
-            leave = function(self, ctx, to) end,
+            enter = <span class="keyword">function</span>(self, ctx, from) <span class="keyword">end</span>,
+            leave = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">end</span>,
+            step  = <span class="keyword">function</span>(self, ctx) <span class="keyword">end</span>,
             transitions = {
-                locked = function(self, ctx, to) end,
+                locked = <span class="keyword">function</span>(self, ctx, to) <span class="keyword">return</span> <span class="keyword">true</span> <span class="keyword">end</span>,
             },
         },
     },
 })
 
--- Step 2: Create instances (cheap — just stores ctx and enters initial state)
-local door1 = DoorLock({ count = 0 })
-local door2 = DoorLock({ count = 0 })
+<span class="comment">-- Step 2: Create instances (cheap — just stores ctx and enters initial state)
+</span><span class="keyword">local</span> door1 = <span class="function-name">DoorLock</span>({ count = <span class="number">0</span>, has_key = <span class="keyword">true</span> })
+<span class="keyword">local</span> door2 = <span class="function-name">DoorLock</span>({ count = <span class="number">0</span> })
+
+<span class="comment">-- Step 3: Transition (returns nil+err if guard blocks, raises on missing path)
+</span><span class="keyword">local</span> ok, err = door1:<span class="function-name">transition_to</span>(<span class="string">"unlocked"</span>)  <span class="comment">-- ok = true
+</span><span class="keyword">local</span> ok, err = door2:<span class="function-name">transition_to</span>(<span class="string">"unlocked"</span>)  <span class="comment">-- ok = nil, err = "key required to unlock"</span>
 </pre>
-    </ul>
+
+</p>
     <h3>Info:</h3>
     <ul>
         <li><strong>Copyright</strong>: Copyright (c) 2026-2026 Thijs Schreijer</li>
@@ -103,16 +122,20 @@ local door2 = DoorLock({ count = 0 })
 	<td class="summary">Create a new instance from this class.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#SMInstance:can_transition_to">SMInstance:can_transition_to (state)</a></td>
-	<td class="summary">Check if a transition to the given state is valid from the current state.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#SMInstance:get_context">SMInstance:get_context ()</a></td>
 	<td class="summary">Get the shared context table.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#SMInstance:get_current_state">SMInstance:get_current_state ()</a></td>
 	<td class="summary">Get the current state name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:has_transition_to">SMInstance:has_transition_to (state)</a></td>
+	<td class="summary">Check if a transition path to the given state exists from the current state.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SMInstance:step">SMInstance:step ()</a></td>
+	<td class="summary">Invoke the current state's step callback and return its result.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#SMInstance:transition_to">SMInstance:transition_to (new_state)</a></td>
@@ -149,33 +172,6 @@ local door2 = DoorLock({ count = 0 })
 
            <span class="types"><span class="type">SMInstance</span></span>
         a new state machine instance
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "SMInstance:can_transition_to"></a>
-    <strong>SMInstance:can_transition_to (state)</strong>
-    </dt>
-    <dd>
-    Check if a transition to the given state is valid from the current state.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">state</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
-         the target state name
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-           <span class="types"><span class="type">boolean</span></span>
-        true if the transition is valid
     </ol>
 
 
@@ -223,13 +219,76 @@ local door2 = DoorLock({ count = 0 })
 
 </dd>
     <dt>
+    <a name = "SMInstance:has_transition_to"></a>
+    <strong>SMInstance:has_transition_to (state)</strong>
+    </dt>
+    <dd>
+    Check if a transition path to the given state exists from the current state.
+ This is a static check; it does not invoke the transition callback/guard.
+ Use <a href="index.html#SMInstance:transition_to">transition_to</a> to perform the actual (guarded) transition.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">state</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
+         the target state name
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span></span>
+        true if a transition path exists
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SMInstance:step"></a>
+    <strong>SMInstance:step ()</strong>
+    </dt>
+    <dd>
+    Invoke the current state's step callback and return its result.
+ The step callback is intended for time-driven behaviour such as timeouts
+ and retries. By convention it returns the number of seconds the caller
+ should wait before calling <a href="index.html#SMInstance:step">step</a> again, or <code>nil</code> when no further
+ stepping is needed.</p>
+
+<p> When <a href="index.html#SMInstance:step">step</a> calls <a href="index.html#SMInstance:transition_to">transition_to</a> internally it should <code>return</code> the result,
+ so that the new state's requested delay (from its <code>enter</code> callback) is
+ propagated back to the caller.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">number</span> or <span class="type">nil</span></span>
+        seconds until the next call, or nil if not needed
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "SMInstance:transition_to"></a>
     <strong>SMInstance:transition_to (new_state)</strong>
     </dt>
     <dd>
     Transition to a specific state.
  Calls the transition callback, then the leave callback on the current state,
- and finally the enter callback on the target state.
+ and finally the enter callback on the target state.</p>
+
+<p> The transition callback acts as a guard: it must return a truthy value to
+ allow the transition. If it returns a falsy value the transition is aborted
+ and <code>nil</code> plus an error message are returned, following the standard Lua
+ <code>ok, err</code> convention. A missing transition path (programming error) still
+ raises a hard error.
 
 
     <h3>Parameters:</h3>
@@ -240,11 +299,41 @@ local door2 = DoorLock({ count = 0 })
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">any</span></span>
+         the return value of the new state's <code>enter</code> callback, or <code>true</code> if it returned
+ nothing (typically this is the number of seconds after which to call the <a href="index.html#SMInstance:step">step</a> callback, but it
+ can be used for any purpose).
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+           <span class="types"><span class="type">nil</span></span>
+
+
+</li>
+        <li>
+           <span class="types"><a class="type" href="https://www.lua.org/manual/5.4/manual.html#6.4">string</a></span>
+        error/reason if the guard blocks the transition</li>
+    </ol>
 
     <h3>Raises:</h3>
-    error if the state does not exist or the transition is not allowed
+    error if the state does not exist or no transition path exists
 
 
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">transitions = {
+    unlocked = <span class="keyword">function</span>(self, ctx, to)
+        <span class="keyword">if</span> <span class="keyword">not</span> ctx.has_key <span class="keyword">then</span>
+            <span class="keyword">return</span> <span class="keyword">nil</span>, <span class="string">"key required to unlock"</span>
+        <span class="keyword">end</span>
+        <span class="keyword">return</span> <span class="keyword">true</span>
+    <span class="keyword">end</span>,
+}</pre>
+    </ul>
 
 </dd>
 </dl>
