@@ -21,7 +21,6 @@ local DoorLock = StateMachine({
         locked = {
             enter = function(self, ctx, from) end,  -- Note: from is `nil` when first started!
             leave = function(self, ctx, to) end,
-            step  = function(self, ctx) end,
             transitions = {
                 unlocked = function(self, ctx, to) return true end,
             },
@@ -29,7 +28,6 @@ local DoorLock = StateMachine({
         unlocked = {
             enter = function(self, ctx, from) end,
             leave = function(self, ctx, to) end,
-            step  = function(self, ctx) end,
             transitions = {
                 locked = function(self, ctx, to) return true end,
             },
@@ -74,7 +72,6 @@ that sets up the context and immediately transitions to the first real state:
 
 ```lua
 local StateMachine = require "statemachine"
-local noop  = function() end
 local allow = function() return true end  -- transition guard that always permits
 
 local Counter = StateMachine({
@@ -86,8 +83,6 @@ local Counter = StateMachine({
                 ctx.log = {}
                 return self:transition_to("do_work")
             end,
-            leave = noop,
-            step  = noop,
             transitions = {
                 do_work = allow,
             },
@@ -98,16 +93,12 @@ local Counter = StateMachine({
                 -- at some point:
                 return self:transition_to("_done")
             end,
-            leave = noop,
-            step  = noop,
             transitions = {
               _done = allow,
             },
         },
         _done = {  -- no way out of this state...
-          enter = noop,  -- potentially do some teardown and cleanup here
-          leave = noop,
-          step  = noop,
+          -- potentially do some teardown and cleanup in enter here
           transitions = {}
         }
     },

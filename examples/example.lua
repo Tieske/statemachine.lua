@@ -35,8 +35,6 @@ local DoorLock = StateMachine({
         end
       end,
 
-      step = function(self, ctx) end,
-
       transitions = {
         unlocked = function(self, ctx, to)
           -- Simulate checking a passcode
@@ -63,8 +61,6 @@ local DoorLock = StateMachine({
         end
       end,
 
-      step = function(self, ctx) end,
-
       transitions = {
         locked = function(self, ctx, to)
           table.insert(ctx.log, "Transition: unlocked -> locked")
@@ -87,8 +83,6 @@ local DoorLock = StateMachine({
       leave = function(self, ctx, to)
         print("🚪 Closing door...")
       end,
-
-      step = function(self, ctx) end,
 
       transitions = {
         unlocked = function(self, ctx, to)

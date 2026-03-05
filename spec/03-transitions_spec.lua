@@ -15,17 +15,11 @@ describe("statemachine transitions", function()
         initial_state = "locked",
         states = {
           locked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function() return true end,
             },
           },
           unlocked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               locked = function() return true end,
             },
@@ -47,17 +41,11 @@ describe("statemachine transitions", function()
         initial_state = "locked",
         states = {
           locked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function() return true end,
             },
           },
           unlocked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               locked = function() return true end,
             },
@@ -79,17 +67,11 @@ describe("statemachine transitions", function()
         initial_state = "locked",
         states = {
           locked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function() return true end,
             },
           },
           unlocked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},  -- no transitions back
           },
         },
@@ -113,7 +95,6 @@ describe("statemachine transitions", function()
           state_a = {
             enter = function() table.insert(order, "a_enter") end,
             leave = function() table.insert(order, "a_leave") end,
-            step = function() end,
             transitions = {
               state_b = function() table.insert(order, "a_to_b") return true end,
             },
@@ -121,7 +102,6 @@ describe("statemachine transitions", function()
           state_b = {
             enter = function() table.insert(order, "b_enter") end,
             leave = function() table.insert(order, "b_leave") end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -155,7 +135,6 @@ describe("statemachine transitions", function()
             leave = function(self, c, to)
               leave_args = { self, c, to }
             end,
-            step = function() end,
             transitions = {
               state_b = function(self, c, to)
                 transition_args = { self, c, to }
@@ -167,8 +146,6 @@ describe("statemachine transitions", function()
             enter = function(self, c, from)
               enter_args = { self, c, from }
             end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -203,15 +180,12 @@ describe("statemachine transitions", function()
           idle = {
             enter = function(self, c) c.count = c.count + 1 end,
             leave = function(self, c) c.count = c.count + 10 end,
-            step = function() end,
             transitions = {
               active = function(self, c) c.count = c.count + 100 return true end,
             },
           },
           active = {
             enter = function(self, c) c.count = c.count + 1000 end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -234,9 +208,6 @@ describe("statemachine transitions", function()
         initial_state = "locked",
         states = {
           locked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function(self, ctx)
                 if not ctx.has_key then
@@ -247,9 +218,6 @@ describe("statemachine transitions", function()
             },
           },
           unlocked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -269,9 +237,6 @@ describe("statemachine transitions", function()
         initial_state = "a",
         states = {
           a = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               b = function() return true end,
               c = function() return true end,
@@ -280,20 +245,13 @@ describe("statemachine transitions", function()
           },
           b = {
             enter = function() return 5 end,  -- requests 5s delay
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
           c = {
-            enter = function() end,  -- returns nothing
-            leave = function() end,
-            step = function() end,
-            transitions = {},
+            transitions = {},  -- enter returns nothing → transition_to returns true
           },
           d = {
             enter = function() return false end,  -- explicitly returns false
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -319,17 +277,11 @@ describe("statemachine transitions", function()
         initial_state = "locked",
         states = {
           locked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function() return true end,
             },
           },
           unlocked = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               locked = function() return true end,
             },
@@ -353,9 +305,6 @@ describe("statemachine transitions", function()
         initial_state = "idle",
         states = {
           idle = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -377,8 +326,6 @@ describe("statemachine transitions", function()
         initial_state = "waiting",
         states = {
           waiting = {
-            enter = function() end,
-            leave = function() end,
             step = function() return 2 end,
             transitions = {},
           },
@@ -395,9 +342,6 @@ describe("statemachine transitions", function()
         initial_state = "idle",
         states = {
           idle = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -427,8 +371,6 @@ describe("statemachine transitions", function()
           },
           done = {
             enter = function() return 99 end,  -- signals "call me in 99s"
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -459,16 +401,12 @@ describe("statemachine transitions", function()
         states = {
           init = {
             enter = function(self, c) table.insert(c.log, "init") end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               ready = function() return true end,
             },
           },
           ready = {
             enter = function(self, c) table.insert(c.log, "ready") end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               running = function() return true end,
               error = function() return true end,
@@ -476,8 +414,6 @@ describe("statemachine transitions", function()
           },
           running = {
             enter = function(self, c) table.insert(c.log, "running") end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               done = function() return true end,
               error = function() return true end,
@@ -485,16 +421,12 @@ describe("statemachine transitions", function()
           },
           done = {
             enter = function(self, c) table.insert(c.log, "done") end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               ready = function() return true end,
             },
           },
           error = {
             enter = function(self, c) table.insert(c.log, "error") end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               ready = function() return true end,
             },

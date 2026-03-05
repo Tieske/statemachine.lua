@@ -17,9 +17,6 @@ describe("statemachine instance creation", function()
         initial_state = "idle",
         states = {
           idle = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -57,8 +54,6 @@ describe("statemachine instance creation", function()
               entered = true
               from_state = from
             end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -84,16 +79,12 @@ describe("statemachine instance creation", function()
         states = {
           locked = {
             enter = function(self, ctx) ctx.enters = (ctx.enters or 0) + 1 end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function(self, ctx) ctx.enters = (ctx.enters or 0) + 1 end,
-            leave = function() end,
-            step = function() end,
             transitions = {
               locked = function() return true end,
             },
@@ -131,9 +122,6 @@ describe("statemachine instance creation", function()
         initial_state = "idle",
         states = {
           idle = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },
@@ -151,9 +139,6 @@ describe("statemachine instance creation", function()
         initial_state = "idle",
         states = {
           idle = {
-            enter = function() end,
-            leave = function() end,
-            step = function() end,
             transitions = {},
           },
         },

@@ -47,6 +47,9 @@
 -- local ok, err = door1:transition_to("unlocked")  -- ok = true
 -- local ok, err = door2:transition_to("unlocked")  -- ok = nil, err = "key required to unlock"
 
+local function noop() end
+
+
 local StateMachine = {}
 
 StateMachine._VERSION = "0.0.1"
@@ -83,12 +86,18 @@ local function validate_config(config)
   for name, state in pairs(config.states) do
     assert(type(state) == "table",
            ("state '%s' must be a table"):format(name))
-    assert(type(state.enter) == "function",
-           ("state '%s' must have an 'enter' function"):format(name))
-    assert(type(state.leave) == "function",
-           ("state '%s' must have a 'leave' function"):format(name))
-    assert(type(state.step) == "function",
-           ("state '%s' must have a 'step' function"):format(name))
+    if state.enter ~= nil then
+      assert(type(state.enter) == "function",
+             ("state '%s' field 'enter' must be a function"):format(name))
+    end
+    if state.leave ~= nil then
+      assert(type(state.leave) == "function",
+             ("state '%s' field 'leave' must be a function"):format(name))
+    end
+    if state.step ~= nil then
+      assert(type(state.step) == "function",
+             ("state '%s' field 'step' must be a function"):format(name))
+    end
     assert(type(state.transitions) == "table",
            ("state '%s' must have a 'transitions' table"):format(name))
 
@@ -115,9 +124,9 @@ local function copy_config_states(states, err_string)
   for name, state in pairs(states) do
     local transitions = {}
     copy[name] = {
-      enter = state.enter,
-      leave = state.leave,
-      step = state.step,
+      enter = state.enter or noop,
+      leave = state.leave or noop,
+      step  = state.step  or noop,
       transitions = transitions,
     }
     for target, callback in pairs(state.transitions) do
