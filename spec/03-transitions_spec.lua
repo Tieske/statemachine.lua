@@ -17,15 +17,17 @@ describe("statemachine transitions", function()
           locked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              unlocked = function() end,
+              unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              locked = function() end,
+              locked = function() return true end,
             },
           },
         },
@@ -47,15 +49,17 @@ describe("statemachine transitions", function()
           locked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              unlocked = function() end,
+              unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              locked = function() end,
+              locked = function() return true end,
             },
           },
         },
@@ -77,13 +81,15 @@ describe("statemachine transitions", function()
           locked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              unlocked = function() end,
+              unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {},  -- no transitions back
           },
         },
@@ -107,13 +113,15 @@ describe("statemachine transitions", function()
           state_a = {
             enter = function() table.insert(order, "a_enter") end,
             leave = function() table.insert(order, "a_leave") end,
+            step = function() end,
             transitions = {
-              state_b = function() table.insert(order, "a_to_b") end,
+              state_b = function() table.insert(order, "a_to_b") return true end,
             },
           },
           state_b = {
             enter = function() table.insert(order, "b_enter") end,
             leave = function() table.insert(order, "b_leave") end,
+            step = function() end,
             transitions = {},
           },
         },
@@ -147,9 +155,11 @@ describe("statemachine transitions", function()
             leave = function(self, c, to)
               leave_args = { self, c, to }
             end,
+            step = function() end,
             transitions = {
               state_b = function(self, c, to)
                 transition_args = { self, c, to }
+                return true
               end,
             },
           },
@@ -158,6 +168,7 @@ describe("statemachine transitions", function()
               enter_args = { self, c, from }
             end,
             leave = function() end,
+            step = function() end,
             transitions = {},
           },
         },
@@ -192,13 +203,15 @@ describe("statemachine transitions", function()
           idle = {
             enter = function(self, c) c.count = c.count + 1 end,
             leave = function(self, c) c.count = c.count + 10 end,
+            step = function() end,
             transitions = {
-              active = function(self, c) c.count = c.count + 100 end,
+              active = function(self, c) c.count = c.count + 100 return true end,
             },
           },
           active = {
             enter = function(self, c) c.count = c.count + 1000 end,
             leave = function() end,
+            step = function() end,
             transitions = {},
           },
         },
@@ -215,11 +228,91 @@ describe("statemachine transitions", function()
       assert.equals(1111, ctx.count)
     end)
 
+
+    it("guard blocks transition and returns nil+err", function()
+      local MyClass = StateMachine({
+        initial_state = "locked",
+        states = {
+          locked = {
+            enter = function() end,
+            leave = function() end,
+            step = function() end,
+            transitions = {
+              unlocked = function(self, ctx)
+                if not ctx.has_key then
+                  return nil, "key required"
+                end
+                return true
+              end,
+            },
+          },
+          unlocked = {
+            enter = function() end,
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+        },
+      })
+
+      local sm = MyClass({ has_key = false })
+      local ok, err = sm:transition_to("unlocked")
+
+      assert.is_nil(ok)
+      assert.equals("key required", err)
+      assert.equals("locked", sm:get_current_state())  -- state unchanged
+    end)
+
+
+    it("transition_to returns enter's return value on success", function()
+      local MyClass = StateMachine({
+        initial_state = "a",
+        states = {
+          a = {
+            enter = function() end,
+            leave = function() end,
+            step = function() end,
+            transitions = {
+              b = function() return true end,
+              c = function() return true end,
+              d = function() return true end,
+            },
+          },
+          b = {
+            enter = function() return 5 end,  -- requests 5s delay
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+          c = {
+            enter = function() end,  -- returns nothing
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+          d = {
+            enter = function() return false end,  -- explicitly returns false
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+        },
+      })
+      local sm_b = MyClass()
+      assert.equals(5, sm_b:transition_to("b"))  -- enter returned 5
+
+      local sm_c = MyClass()
+      assert.is_true(sm_c:transition_to("c"))  -- enter returned nothing → true
+
+      local sm_d = MyClass()
+      assert.is_false(sm_d:transition_to("d"))  -- enter returned false, preserved
+    end)
+
   end)
 
 
 
-  describe("can_transition_to", function()
+  describe("has_transition_to", function()
 
     it("returns true for valid transitions", function()
       local DoorClass = StateMachine({
@@ -228,28 +321,30 @@ describe("statemachine transitions", function()
           locked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              unlocked = function() end,
+              unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              locked = function() end,
+              locked = function() return true end,
             },
           },
         },
       })
       local sm = DoorClass()
 
-      assert.is_true(sm:can_transition_to("unlocked"))
-      assert.is_false(sm:can_transition_to("locked"))
+      assert.is_true(sm:has_transition_to("unlocked"))
+      assert.is_false(sm:has_transition_to("locked"))
 
       sm:transition_to("unlocked")
 
-      assert.is_false(sm:can_transition_to("unlocked"))
-      assert.is_true(sm:can_transition_to("locked"))
+      assert.is_false(sm:has_transition_to("unlocked"))
+      assert.is_true(sm:has_transition_to("locked"))
     end)
 
 
@@ -260,14 +355,94 @@ describe("statemachine transitions", function()
           idle = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {},
           },
         },
       })
       local sm = MyClass()
 
-      assert.is_false(sm:can_transition_to("nonexistent"))
-      assert.is_false(sm:can_transition_to("idle"))
+      assert.is_false(sm:has_transition_to("nonexistent"))
+      assert.is_false(sm:has_transition_to("idle"))
+    end)
+
+  end)
+
+
+
+  describe("step", function()
+
+    it("calls the current state's step callback and returns its result", function()
+      local MyClass = StateMachine({
+        initial_state = "waiting",
+        states = {
+          waiting = {
+            enter = function() end,
+            leave = function() end,
+            step = function() return 2 end,
+            transitions = {},
+          },
+        },
+      })
+      local sm = MyClass()
+
+      assert.equals(2, sm:step())
+    end)
+
+
+    it("returns nil when step callback returns nothing", function()
+      local MyClass = StateMachine({
+        initial_state = "idle",
+        states = {
+          idle = {
+            enter = function() end,
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+        },
+      })
+      local sm = MyClass()
+
+      assert.is_nil(sm:step())
+    end)
+
+
+    it("propagates delay from new state's enter when step triggers a transition", function()
+      local MyClass = StateMachine({
+        initial_state = "sending",
+        states = {
+          sending = {
+            enter = function() return 1 end,
+            leave = function() end,
+            step = function(self, ctx)
+              if ctx.done then
+                return self:transition_to("done")  -- propagates enter's return
+              end
+              return 1
+            end,
+            transitions = {
+              done = function() return true end,
+            },
+          },
+          done = {
+            enter = function() return 99 end,  -- signals "call me in 99s"
+            leave = function() end,
+            step = function() end,
+            transitions = {},
+          },
+        },
+      })
+
+      local ctx = { done = false }
+      local sm = MyClass(ctx)
+
+      assert.equals(1, sm:step())   -- not done yet
+
+      ctx.done = true
+      local result = sm:step()      -- triggers transition to "done"
+      assert.equals(99, result)     -- enter("done") returned 99
+      assert.equals("done", sm:get_current_state())
     end)
 
   end)
@@ -285,38 +460,43 @@ describe("statemachine transitions", function()
           init = {
             enter = function(self, c) table.insert(c.log, "init") end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              ready = function() end,
+              ready = function() return true end,
             },
           },
           ready = {
             enter = function(self, c) table.insert(c.log, "ready") end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              running = function() end,
-              error = function() end,
+              running = function() return true end,
+              error = function() return true end,
             },
           },
           running = {
             enter = function(self, c) table.insert(c.log, "running") end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              done = function() end,
-              error = function() end,
+              done = function() return true end,
+              error = function() return true end,
             },
           },
           done = {
             enter = function(self, c) table.insert(c.log, "done") end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              ready = function() end,
+              ready = function() return true end,
             },
           },
           error = {
             enter = function(self, c) table.insert(c.log, "error") end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              ready = function() end,
+              ready = function() return true end,
             },
           },
         },

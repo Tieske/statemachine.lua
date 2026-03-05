@@ -21,6 +21,7 @@ local DoorLock = StateMachine({
         locked = {
             enter = function(self, ctx, from) end,  -- Note: from is `nil` when first started!
             leave = function(self, ctx, to) end,
+            step  = function(self, ctx) end,
             transitions = {
                 unlocked = function(self, ctx, to) return true end,
             },
@@ -28,6 +29,7 @@ local DoorLock = StateMachine({
         unlocked = {
             enter = function(self, ctx, from) end,
             leave = function(self, ctx, to) end,
+            step  = function(self, ctx) end,
             transitions = {
                 locked = function(self, ctx, to) return true end,
             },
@@ -44,7 +46,7 @@ local door2 = DoorLock({ count = 0 })
 
 Each state defines `enter` and `leave` callbacks, and each transition defines a callback that also acts as a **guard**. When transitioning from state A to state B, the sequence is:
 
-1. **Transition callback (guard)** — must return a truthy value to allow the transition. Return `nil, "reason"` (or any falsy value) to block it; `transition_to` will then return `nil, err` without touching the states.
+1. **Transition callback (guard)** — must return a truthy value to allow the transition. Return `nil, "reason"` to block it; `transition_to` will then return `nil, err` without touching the states.
 2. **Leave callback**
 3. The current state is updated (`get_current_state()` now returns the new state)
 4. **Enter callback**
@@ -85,6 +87,7 @@ local Counter = StateMachine({
                 return self:transition_to("do_work")
             end,
             leave = noop,
+            step  = noop,
             transitions = {
                 do_work = allow,
             },
@@ -96,6 +99,7 @@ local Counter = StateMachine({
                 return self:transition_to("_done")
             end,
             leave = noop,
+            step  = noop,
             transitions = {
               _done = allow,
             },
@@ -103,6 +107,7 @@ local Counter = StateMachine({
         _done = {  -- no way out of this state...
           enter = noop,  -- potentially do some teardown and cleanup here
           leave = noop,
+          step  = noop,
           transitions = {}
         }
     },
@@ -119,3 +124,99 @@ definition, so callers can create instances with just `Counter()` and get a
 fully initialized context.
 
 Similarly, a `_done` state can be defined that has no transitions out of that state, to ensure it doesn't get used beyond its lifetime.
+
+## 1.5 Time-driven states and the step loop
+
+Every state must define a `step(self, ctx)` callback alongside `enter` and `leave`.
+Calling `machine:step()` invokes the current state's `step` callback and returns its
+result.
+
+By convention the return value is the number of seconds the caller should wait before
+calling `step` again, or `nil` when no further stepping is needed. States that
+have no time-driven behaviour simply return nothing:
+
+```lua
+step = function(self, ctx) end  -- no-op; signals no stepping needed
+```
+
+`transition_to` returns whatever the `enter` callback of the new state returns (or
+`true` when `enter` returns nothing). This means that when `step` calls
+`transition_to`, it must `return` that result so the new state's requested delay
+propagates back to the external loop:
+
+```lua
+step = function(self, ctx)
+    if timed_out(ctx) then
+        return self:transition_to("failed")  -- 'return' is required here
+    end
+    return 1
+end
+```
+
+Without the `return`, the delay from the new state's `enter` is discarded and the
+external loop receives `nil`, stopping the loop prematurely.
+
+The external loop is entirely user code; the state machine imposes no scheduler.
+
+```lua
+local now = os.time  -- replace with a higher-resolution clock if needed
+
+-- A state machine that retries a task up to 3 times before failing.
+local Retrier = StateMachine({
+    initial_state = "trying",
+    states = {
+        trying = {
+            enter = function(self, ctx, from)
+                ctx.attempts = (ctx.attempts or 0) + 1
+                ctx.deadline = now() + ctx.timeout
+                start_task(ctx)
+                return 1  -- request first step in 1 second
+            end,
+            leave = function(self, ctx) end,
+            step = function(self, ctx)
+                if ctx.done then
+                    return self:transition_to("succeeded")   -- task completed
+                end
+                if now() < ctx.deadline then return 1 end   -- still waiting
+                if ctx.attempts >= 3 then
+                    return self:transition_to("failed")      -- give up
+                end
+                return self:transition_to("trying")          -- retry (re-enter)
+            end,
+            transitions = {
+                trying    = function(self, ctx) return true end,
+                succeeded = function(self, ctx) return true end,
+                failed    = function(self, ctx) return true end,
+            },
+        },
+        succeeded = {
+            enter = function(self, ctx)
+                print("done after "..ctx.attempts.." attempt(s)")
+            end,
+            leave = function(self, ctx) end,
+            step  = function(self, ctx) end,
+            transitions = {},
+        },
+        failed = {
+            enter = function(self, ctx)
+                print("failed after "..ctx.attempts.." attempt(s)")
+            end,
+            leave = function(self, ctx) end,
+            step  = function(self, ctx) end,
+            transitions = {},
+        },
+    },
+})
+
+-- External loop: the caller decides how to wait (sleep, coroutine yield, libuv timer…)
+local machine = Retrier({ timeout = 5, done = false })
+local delay = machine:step()
+while delay do
+    -- wait `delay` seconds here (os.execute("sleep "..delay), coroutine.yield, etc.)
+    delay = machine:step()
+end
+```
+
+The step logic and timing are plain user code inside the callbacks. The state machine
+only provides the `step` delegation and the return-value propagation through
+`transition_to` — everything else is up to the caller.

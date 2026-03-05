@@ -17,6 +17,7 @@
 --         locked = {
 --             enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
 --             leave = function(self, ctx, to) end,
+--             step  = function(self, ctx) end,         -- return seconds, or nil for no stepping
 --             transitions = {
 --                 -- The callback is also a guard: return true to allow, or nil+err to block.
 --                 unlocked = function(self, ctx, to)
@@ -30,6 +31,7 @@
 --         unlocked = {
 --             enter = function(self, ctx, from) end,
 --             leave = function(self, ctx, to) end,
+--             step  = function(self, ctx) end,
 --             transitions = {
 --                 locked = function(self, ctx, to) return true end,
 --             },
@@ -85,6 +87,8 @@ local function validate_config(config)
            ("state '%s' must have an 'enter' function"):format(name))
     assert(type(state.leave) == "function",
            ("state '%s' must have a 'leave' function"):format(name))
+    assert(type(state.step) == "function",
+           ("state '%s' must have a 'step' function"):format(name))
     assert(type(state.transitions) == "table",
            ("state '%s' must have a 'transitions' table"):format(name))
 
@@ -113,6 +117,7 @@ local function copy_config_states(states, err_string)
     copy[name] = {
       enter = state.enter,
       leave = state.leave,
+      step = state.step,
       transitions = transitions,
     }
     for target, callback in pairs(state.transitions) do
@@ -195,8 +200,11 @@ function SMInstance:transition_to(new_state)
 
   -- enter new state
   self._current_state = new_state
-  target_state.enter(self, ctx, current_state)
-  return true
+  local result = target_state.enter(self, ctx, current_state)
+  if result == nil then
+    return true
+  end
+  return result
 end
 
 
@@ -217,6 +225,23 @@ end
 function SMInstance:has_transition_to(state)
   local current_state = self._states[self._current_state]
   return current_state.transitions[state] ~= nil
+end
+
+
+
+--- Invoke the current state's step callback and return its result.
+-- The step callback is intended for time-driven behaviour such as timeouts
+-- and retries. By convention it returns the number of seconds the caller
+-- should wait before calling `step` again, or `nil` when no further
+-- stepping is needed.
+--
+-- When `step` calls `transition_to` internally it should `return` the result,
+-- so that the new state's requested delay (from its `enter` callback) is
+-- propagated back to the caller.
+-- @treturn number|nil seconds until the next call, or nil if not needed
+function SMInstance:step()
+  local state = self._states[self._current_state]
+  return state.step(self, self:get_context())
 end
 
 

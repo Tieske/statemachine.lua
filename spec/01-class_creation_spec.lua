@@ -30,6 +30,7 @@ describe("statemachine class creation", function()
           idle = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {},
           },
         },
@@ -46,15 +47,17 @@ describe("statemachine class creation", function()
           locked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              unlocked = function() end,
+              unlocked = function() return true end,
             },
           },
           unlocked = {
             enter = function() end,
             leave = function() end,
+            step = function() end,
             transitions = {
-              locked = function() end,
+              locked = function() return true end,
             },
           },
         },
@@ -78,6 +81,7 @@ describe("statemachine class creation", function()
             idle = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {},
             },
           },
@@ -113,6 +117,7 @@ describe("statemachine class creation", function()
             [1] = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {},
             },
           },
@@ -129,6 +134,7 @@ describe("statemachine class creation", function()
             idle = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {},
             },
           },
@@ -144,6 +150,7 @@ describe("statemachine class creation", function()
           states = {
             idle = {
               leave = function() end,
+              step = function() end,
               transitions = {},
             },
           },
@@ -159,11 +166,28 @@ describe("statemachine class creation", function()
           states = {
             idle = {
               enter = function() end,
+              step = function() end,
               transitions = {},
             },
           },
         })
       end, "state 'idle' must have a 'leave' function")
+    end)
+
+
+    it("rejects state without step function", function()
+      assert.has_error(function()
+        StateMachine({
+          initial_state = "idle",
+          states = {
+            idle = {
+              enter = function() end,
+              leave = function() end,
+              transitions = {},
+            },
+          },
+        })
+      end, "state 'idle' must have a 'step' function")
     end)
 
 
@@ -175,6 +199,7 @@ describe("statemachine class creation", function()
             idle = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
             },
           },
         })
@@ -190,6 +215,7 @@ describe("statemachine class creation", function()
             idle = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {
                 active = "not a function",
               },
@@ -197,6 +223,7 @@ describe("statemachine class creation", function()
             active = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {},
             },
           },
@@ -213,8 +240,9 @@ describe("statemachine class creation", function()
             idle = {
               enter = function() end,
               leave = function() end,
+              step = function() end,
               transitions = {
-                nonexistent = function() end,
+                nonexistent = function() return true end,
               },
             },
           },
