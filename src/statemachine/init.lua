@@ -18,22 +18,32 @@
 --             enter = function(self, ctx, from) end,   -- Note: from is nil when first started!
 --             leave = function(self, ctx, to) end,
 --             transitions = {
---                 unlocked = function(self, ctx, to) end,
+--                 -- The callback is also a guard: return true to allow, or nil+err to block.
+--                 unlocked = function(self, ctx, to)
+--                     if not ctx.has_key then
+--                         return nil, "key required to unlock"
+--                     end
+--                     return true
+--                 end,
 --             },
 --         },
 --         unlocked = {
 --             enter = function(self, ctx, from) end,
 --             leave = function(self, ctx, to) end,
 --             transitions = {
---                 locked = function(self, ctx, to) end,
+--                 locked = function(self, ctx, to) return true end,
 --             },
 --         },
 --     },
 -- })
 --
 -- -- Step 2: Create instances (cheap — just stores ctx and enters initial state)
--- local door1 = DoorLock({ count = 0 })
+-- local door1 = DoorLock({ count = 0, has_key = true })
 -- local door2 = DoorLock({ count = 0 })
+--
+-- -- Step 3: Transition (returns nil+err if guard blocks, raises on missing path)
+-- local ok, err = door1:transition_to("unlocked")  -- ok = true
+-- local ok, err = door2:transition_to("unlocked")  -- ok = nil, err = "key required to unlock"
 
 local StateMachine = {}
 
@@ -134,14 +144,32 @@ SMInstance.__index = SMInstance
 --- Transition to a specific state.
 -- Calls the transition callback, then the leave callback on the current state,
 -- and finally the enter callback on the target state.
+--
+-- The transition callback acts as a guard: it must return a truthy value to
+-- allow the transition. If it returns a falsy value the transition is aborted
+-- and `nil` plus an error message are returned, following the standard Lua
+-- `ok, err` convention. A missing transition path (programming error) still
+-- raises a hard error.
+--
+-- @usage
+-- transitions = {
+--     unlocked = function(self, ctx, to)
+--         if not ctx.has_key then
+--             return nil, "key required to unlock"
+--         end
+--         return true
+--     end,
+-- }
 -- @tparam string new_state the target state name
--- @raise error if the state does not exist or the transition is not allowed
+-- @treturn true on success
+-- @treturn nil, string if the guard blocks the transition
+-- @raise error if the state does not exist or no transition path exists
 function SMInstance:transition_to(new_state)
   local current_state = self._current_state
   local target_state = self._states[new_state] -- will throw an informative error if not found
   local ctx = self:get_context()
 
-  -- check transition is allowed
+  -- check transition path exists
   if current_state then -- upon initialization this is nil, hence the check
     local transition_fn = self._states[current_state].transitions[new_state]
     if not transition_fn then
@@ -155,14 +183,20 @@ function SMInstance:transition_to(new_state)
         current_state, new_state, current_state, valid), 2)
     end
 
+    -- invoke guard; a falsy return blocks the transition
+    local ok, err = transition_fn(self, ctx, new_state)
+    if not ok then
+      return nil, err
+    end
+
     -- leave old state
-    transition_fn(self, ctx, new_state)
     self._states[current_state].leave(self, ctx, new_state)
   end
 
   -- enter new state
   self._current_state = new_state
   target_state.enter(self, ctx, current_state)
+  return true
 end
 
 
@@ -175,10 +209,12 @@ end
 
 
 
---- Check if a transition to the given state is valid from the current state.
+--- Check if a transition path to the given state exists from the current state.
+-- This is a static check; it does not invoke the transition callback/guard.
+-- Use `transition_to` to perform the actual (guarded) transition.
 -- @tparam string state the target state name
--- @treturn boolean true if the transition is valid
-function SMInstance:can_transition_to(state)
+-- @treturn boolean true if a transition path exists
+function SMInstance:has_transition_to(state)
   local current_state = self._states[self._current_state]
   return current_state.transitions[state] ~= nil
 end

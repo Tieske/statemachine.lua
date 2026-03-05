@@ -32,8 +32,11 @@ The scope of what is covered by the version number excludes:
 
 ### Version X.Y.Z, unreleased
 
-- a fix
-- a change
+- breaking: transition callbacks now act as guards; they must return a truthy
+  value to allow the transition. Returning a falsy value (e.g. `nil, "reason"`)
+  causes `transition_to` to return `nil, err` without executing the transition.
+- breaking: `can_transition_to` renamed to `has_transition_to` to reflect that
+  it only checks whether a path exists (static check, no guard invoked).
 
 ### Version 0.1.0, released 01-Jan-2022
 

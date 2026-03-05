@@ -39,10 +39,11 @@ local DoorLock = StateMachine({
         unlocked = function(self, ctx, to)
           -- Simulate checking a passcode
           if ctx.failed_attempts >= ctx.max_attempts then
-            error("Too many failed attempts. Lock is disabled.")
+            return nil, "Too many failed attempts. Lock is disabled."
           end
 
           table.insert(ctx.log, "Transition: locked -> unlocked")
+          return true
         end,
       },
     },
@@ -63,10 +64,12 @@ local DoorLock = StateMachine({
       transitions = {
         locked = function(self, ctx, to)
           table.insert(ctx.log, "Transition: unlocked -> locked")
+          return true
         end,
 
         open = function(self, ctx, to)
           table.insert(ctx.log, "Transition: unlocked -> open")
+          return true
         end,
       },
     },
@@ -84,6 +87,7 @@ local DoorLock = StateMachine({
       transitions = {
         unlocked = function(self, ctx, to)
           table.insert(ctx.log, "Transition: open -> unlocked")
+          return true
         end,
       },
     },
@@ -102,7 +106,7 @@ print("\n=== Smart Door Lock Demo ===\n")
 
 -- Try to open without unlocking
 print("\n1. Trying to open a locked door:")
-if door:can_transition_to("open") then
+if door:has_transition_to("open") then
   door:transition_to("open")
 else
   print("❌ Cannot open: door is locked!")
@@ -110,7 +114,10 @@ end
 
 -- Unlock the door
 print("\n2. Unlocking the door:")
-door:transition_to("unlocked")
+local ok, err = door:transition_to("unlocked")
+if not ok then
+  print(string.format("❌ Blocked: %s", err))
+end
 
 -- Now open it
 print("\n3. Opening the unlocked door:")
